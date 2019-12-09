@@ -2,6 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { FormGroup, FormBuilder, Validators } from '@angular/forms';
 import { LoadingController, ToastController, NavController } from '@ionic/angular';
 import { DataService } from 'src/app/data.service';
+import { UserModel } from 'src/app/models/user.model';
+import { SecurityUtil } from 'src/app/utils/security.util';
+import { timeout } from 'q';
 
 @Component({
   selector: 'app-login',
@@ -36,4 +39,46 @@ export class LoginPage implements OnInit {
     this.hide = !this.hide;
   }
 
+  async resetPassword() {
+    if (this.form.controls['username'].invalid) {
+      this.showError('Usuário inválido');
+      return;
+    }
+
+    const loading = await this.loadCtrl.create({ message: 'Restaurando sua senha...' });
+    loading.present();
+
+    setTimeout(() => {
+      loading.dismiss();
+    }, 3000);
+  }
+
+  async submit() {
+    if (this.form.invalid)
+      return;
+
+    const loading = await this.loadCtrl.create({ message: 'Autenticando...' });
+    loading.present();
+
+    this.service
+      .authenticate(this.form.value)
+      .subscribe(
+        (res: UserModel) => {
+          SecurityUtil.set(res);
+
+          loading.dismiss();
+
+          this.navCtrl.navigateRoot('/');
+        },
+        () => {
+          loading.dismiss();
+          this.showError('Usuário ou senha inválidos');
+        }
+      );
+  }
+
+  async showError(message) {
+    const error = await this.toastCtrl.create({ message: message, showCloseButton: true, closeButtonText: 'Fechar', duration: 3000 });
+    error.present();
+  }
 }
